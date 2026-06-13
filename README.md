@@ -184,15 +184,168 @@ This is laid out so you can build the manifests yourself. A few pointers:
   the **same** `Jwt__Key`/`Jwt__Issuer`/`Jwt__Audience` or token validation will fail.
 - The three PostgreSQL instances and Redis are your **stateful** components — good
   candidates for StatefulSets + PersistentVolumeClaims (or managed cloud equivalents).
-- Service-to-service calls use DNS names. In compose those are `catalog-api`, etc.;
-  in Kubernetes they become the Service names you choose (e.g. `ordering-api` in the
-  same namespace). Set `Services__Ordering=http://ordering-api:8080` via env/ConfigMap.
+- Service-to-service calls use DNS names. In compose those are `catalog-service`, etc.;
+  in Kubernetes they use the same Service names (e.g. `catalog-service`, `order-service`).
 - There are two front-ish layers: the **Web** service (nginx + static SPA) is what
   users hit, and it proxies `/api` to the **Gateway**. On Kubernetes, expose Web with
   an Ingress (or LoadBalancer Service); keep the Gateway and all APIs as internal
-  ClusterIP Services. Update Web's `nginx.conf` `proxy_pass` to the Gateway's in-cluster
-  Service name, and the Gateway's cluster destinations to the API Service names.
+  ClusterIP Services.
 - Each backend service exposes `GET /health` (returns 200) — wire these up as readiness
   and liveness probes.
+
+---
+
+## Run on Kubernetes (Kind cluster)
+
+### Prerequisites
+
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/)
+- [Kind](https://kind.sigs.k8s.io/docs/user/quick-start/#installation) (Kubernetes in Docker)
+- [kubectl](https://kubernetes.io/docs/tasks/tools/)
+
+### 1. Create a Kind cluster (if not already created)
+
+```bash
+kind create cluster --name gchowdar-cluster --config kind-config.yml
+```
+
+### 2. Build all Docker images
+
+```bash
+cd shopping-microservices
+docker compose build
+```
+
+This builds images for all services:
+- `shopping-microservices-catalog-service`
+- `shopping-microservices-identity-service`
+- `shopping-microservices-order-service`
+- `shopping-microservices-basket-service`
+- `shopping-microservices-gateway-service`
+- `shopping-microservices-web`
+
+### 3. Tag images for Kind (match K8s manifest names)
+
+```bash
+docker tag shopping-microservices-catalog-service:latest shopping-microservices-catalog-api:latest
+docker tag shopping-microservices-identity-service:latest shopping-microservices-identity-api:latest
+docker tag shopping-microservices-order-service:latest shopping-microservices-ordering-api:latest
+docker tag shopping-microservices-basket-service:latest shopping-microservices-basket-api:latest
+docker tag shopping-microservices-gateway-service:latest shopping-microservices-gateway:latest
+```
+
+### 4. Load images into Kind cluster
+
+```bash
+kind load docker-image shopping-microservices-catalog-api:latest --name gchowdar-cluster
+kind load docker-image shopping-microservices-identity-api:latest --name gchowdar-cluster
+kind load docker-image shopping-microservices-ordering-api:latest --name gchowdar-cluster
+kind load docker-image shopping-microservices-basket-api:latest --name gchowdar-cluster
+kind load docker-image shopping-microservices-gateway:latest --name gchowdar-cluster
+kind load docker-image shopping-microservices-web:latest --name gchowdar-cluster
+```
+
+### 5. Deploy everything with Kustomize (single command)
+
+```bash
+kubectl apply -k src/
+```
+
+This applies all manifests in the correct order:
+- Namespace (`shoppingapp-ns`)
+- ConfigMaps & Secrets
+- PersistentVolumeClaims
+- Database deployments (PostgreSQL × 3, Redis × 1)
+- Application deployments (Catalog, Identity, Ordering, Basket APIs)
+- Gateway deployment
+- Nginx (Web frontend) deployment
+
+### 6. Verify all pods are running
+
+```bash
+kubectl get pods -n shoppingapp-ns
+```
+
+Wait until all pods show `Running` and `READY 1/1`.
+
+### 7. Access the application
+
+**Option A: Port-forward the frontend**
+
+```bash
+kubectl port-forward svc/nginx-service 3000:80 -n shoppingapp-ns
+```
+
+Open http://localhost:3000
+
+**Option B: Port-forward the gateway directly**
+
+```bash
+kubectl port-forward svc/gateway-service 8080:8080 -n shoppingapp-ns
+```
+
+Test with: `curl http://localhost:8080/catalog/products`
+
+**Option C: Use NodePort**
+
+```bash
+# Find the assigned NodePort
+kubectl get svc nginx-service -n shoppingapp-ns
+# Access via: http://localhost:<NodePort>
+```
+
+### 8. Check service connectivity
+
+```bash
+# Test catalog through gateway
+kubectl exec -n shoppingapp-ns deployment/nginx-deployment -- wget -qO- http://gateway-service:8080/catalog/products
+
+# Test individual services
+kubectl exec -n shoppingapp-ns deployment/nginx-deployment -- wget -qO- http://catalog-service:8080/health
+kubectl exec -n shoppingapp-ns deployment/nginx-deployment -- wget -qO- http://identity-service:8080/health
+kubectl exec -n shoppingapp-ns deployment/nginx-deployment -- wget -qO- http://order-service:8080/health
+kubectl exec -n shoppingapp-ns deployment/nginx-deployment -- wget -qO- http://basket-service:8080/health
+```
+
+### 9. Tear down
+
+```bash
+kubectl delete -k src/
+```
+
+### 10. Delete the Kind cluster entirely
+
+```bash
+kind delete cluster --name gchowdar-cluster
+```
+
+---
+
+## Kubernetes Service Map
+
+| K8s Service Name     | Port | Backs              | Image                                       |
+|----------------------|------|--------------------|---------------------------------------------|
+| `catalog-service`    | 8080 | Catalog.API        | `shopping-microservices-catalog-api`        |
+| `identity-service`   | 8080 | Identity.API       | `shopping-microservices-identity-api`       |
+| `order-service`      | 8080 | Ordering.API       | `shopping-microservices-ordering-api`       |
+| `basket-service`     | 8080 | Basket.API         | `shopping-microservices-basket-api`         |
+| `gateway-service`    | 8080 | Gateway (YARP)     | `shopping-microservices-gateway`            |
+| `nginx-service`      | 80   | Web (nginx + SPA)  | `shopping-microservices-web`               |
+| `catalog-service-db` | 5432 | PostgreSQL         | `postgres:16`                               |
+| `identity-service-db`| 5432 | PostgreSQL         | `postgres:16`                               |
+| `order-service-db`   | 5432 | PostgreSQL         | `postgres:16`                               |
+| `basket-service-db`  | 6379 | Redis              | `redis:latest`                              |
+
+---
+
+## Troubleshooting
+
+| Problem | Fix |
+|---------|-----|
+| `ImagePullBackOff` | Image not loaded into Kind. Run `kind load docker-image <image> --name gchowdar-cluster` |
+| `CrashLoopBackOff` on app pods | DB not ready yet. Check DB pod logs: `kubectl logs -n shoppingapp-ns deployment/<db-deployment>` |
+| Port-forward `connection refused` | Container port mismatch. All .NET apps listen on **8080** |
+| Gateway returns 404 | Gateway image has stale config. Rebuild: `docker compose build gateway-service`, re-tag, reload, and restart |
+| Can't reach catalog from browser | Nginx needs correct `proxy_pass`. Verify: `kubectl exec -n shoppingapp-ns deployment/nginx-deployment -- cat /etc/nginx/conf.d/default.conf` |
 
 Have fun deploying it!

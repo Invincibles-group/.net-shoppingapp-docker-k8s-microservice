@@ -1,0 +1,51 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: basket-service-db
+  namespace: shoppingapp-ns
+spec:
+  ports:
+    - port: 6379
+      targetPort: 6379
+  selector:
+    app: basket-db
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: basket-db-deployment
+  namespace: shoppingapp-ns
+  labels:
+    app: basket-db
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: basket-db
+  template:
+    metadata:
+      labels:
+        app: basket-db
+    spec:
+      containers:
+      - name: basket-db
+        image: redis:latest
+        ports:
+        - containerPort: 6379
+        readinessProbe:
+          exec:
+            command: ["redis-cli", "ping"]
+          initialDelaySeconds: 10
+          periodSeconds: 5
+        livenessProbe:
+          exec:
+            command: ["redis-cli", "ping"]
+          initialDelaySeconds: 15
+          periodSeconds: 10
+        volumeMounts:
+        - name: basket-db-storage
+          mountPath: /data
+      volumes:
+      - name: basket-db-storage
+        persistentVolumeClaim:
+          claimName: basket-db-pvc

@@ -1,0 +1,40 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: basket-service
+  namespace: shoppingapp-ns
+spec:
+  ports:
+    - port: 8080
+      targetPort: 8080
+  selector:
+    app: basket-api
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: basket-deployment
+  namespace: shoppingapp-ns
+  labels:
+    app: basket-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: basket-api
+  template:
+    metadata:
+      labels:
+        app: basket-api
+    spec:
+      containers:
+      - name: basket-api
+        image: shopping-microservices-basket-api:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8080
+        env:
+        - name: ConnectionStrings__Redis
+          value: "basket-service-db:6379"
+        - name: Services__Ordering
+          value: "http://order-service:8080"

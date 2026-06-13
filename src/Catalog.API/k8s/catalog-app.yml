@@ -1,0 +1,54 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: catalog-service
+  namespace: shoppingapp-ns
+spec:
+  type: NodePort
+  ports:
+    - port: 8080
+      targetPort: 8080
+  selector:
+    app: catalog-api
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: catalog-deployment
+  namespace: shoppingapp-ns
+  labels:
+    app: catalog-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: catalog-api
+  template:
+    metadata:
+      labels:
+        app: catalog-api
+    spec:
+      containers:
+      - name: catalog-api
+        image: shopping-microservices-catalog-api:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8080
+        env:
+          - name: DB_HOST
+            value: "catalog-service-db"
+          - name: POSTGRES_DB
+            valueFrom:
+              configMapKeyRef:
+                name: shoppingapp-config-map
+                key: POSTGRES_DB
+          - name: POSTGRES_USER
+            valueFrom:
+              configMapKeyRef:
+                name: shoppingapp-config-map
+                key: POSTGRES_USER
+          - name: POSTGRES_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: shoppingapp-secret
+                key: POSTGRES_PASSWORD

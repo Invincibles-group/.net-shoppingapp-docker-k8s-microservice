@@ -1,0 +1,34 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  # Namespace
+  - namespace.yml
+
+  # Shared config
+  - Catalog.API/k8s/configMap.yml
+  - Catalog.API/k8s/secrets.yml
+
+  # PVCs
+  - Catalog.API/k8s/catalog-db-pvc.yml
+  - Identity.API/k8s/identity-db-pvc.yml
+  - Ordering.API/k8s/order-db-pvc.yml
+  - Basket.API/k8s/basket-db-pvc.yml
+
+  # Databases
+  - Catalog.API/k8s/catalog-db-kind.yml
+  - Identity.API/k8s/identity-db-kind.yml
+  - Ordering.API/k8s/order-db-kind.yml
+  - Basket.API/k8s/basket-kind.yml
+
+  # Application services
+  - Catalog.API/k8s/catalog-app.yml
+  - Identity.API/k8s/identity-app.yml
+  - Ordering.API/k8s/order-app.yml
+  - Basket.API/k8s/basket-app.yml
+
+  # Gateway
+  - Gateway/K8s/gateway-app.yml
+
+  # Frontend
+  - Web/k8s/nginx-app.yml

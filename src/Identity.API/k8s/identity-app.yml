@@ -1,0 +1,54 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: identity-service
+  namespace: shoppingapp-ns
+spec:
+  type: NodePort
+  ports:
+    - port: 8080
+      targetPort: 8080
+  selector:
+    app: identity-api
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: identity-deployment
+  namespace: shoppingapp-ns
+  labels:
+    app: identity-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: identity-api
+  template:
+    metadata:
+      labels:
+        app: identity-api
+    spec:
+      containers:
+      - name: identity-api
+        image: shopping-microservices-identity-api:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8080
+        env:
+          - name: DB_HOST
+            value: "identity-service-db"
+          - name: POSTGRES_DB
+            valueFrom:
+              configMapKeyRef:
+                name: shoppingapp-config-map
+                key: POSTGRES_DB
+          - name: POSTGRES_USER
+            valueFrom:
+              configMapKeyRef:
+                name: shoppingapp-config-map
+                key: POSTGRES_USER
+          - name: POSTGRES_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: shoppingapp-secret
+                key: POSTGRES_PASSWORD

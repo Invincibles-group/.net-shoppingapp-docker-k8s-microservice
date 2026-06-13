@@ -1,0 +1,36 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: nginx-service
+  namespace: shoppingapp-ns
+spec:
+  type: NodePort
+  ports:
+    - port: 80
+      targetPort: 80
+  selector:
+    app: nginx-app
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+  namespace: shoppingapp-ns
+  labels:
+    app: nginx-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx-app
+  template:
+    metadata:
+      labels:
+        app: nginx-app
+    spec:
+      containers:
+        - name: nginx-app
+          image: shopping-microservices-web:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+          - containerPort: 80

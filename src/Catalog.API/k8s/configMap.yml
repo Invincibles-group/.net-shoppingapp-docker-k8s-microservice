@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: shoppingapp-config-map
+  namespace: shoppingapp-ns
+data:
+  POSTGRES_DB: shoppingdb
+  POSTGRES_USER: postgres

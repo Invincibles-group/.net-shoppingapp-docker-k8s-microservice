@@ -1,0 +1,94 @@
+services:
+  # ---------- Databases ----------
+  catalog-service-db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: catalogdb
+    ports: [ "5432:5432" ]
+    volumes: [ "catalog-data:/var/lib/postgresql/data" ]
+
+  order-service-db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: orderingdb
+    ports: [ "5433:5432" ]
+    volumes: [ "ordering-data:/var/lib/postgresql/data" ]
+
+  identity-service-db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: identitydb
+    ports: [ "5435:5432" ]
+    volumes: [ "identity-data:/var/lib/postgresql/data" ]
+
+  basket-service-db:
+    image: redis:7
+    ports: [ "6379:6379" ]
+
+  # ---------- Services ----------
+  identity-service:
+    build: ./src/Identity.API
+    environment:
+      DB_HOST: "identity-service-db"
+      POSTGRES_DB: "identitydb"
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "postgres"
+      Jwt__Key: "dev-only-secret-change-me-please-0123456789abcdef"
+      Jwt__Issuer: "shopping-identity"
+      Jwt__Audience: "shopping-clients"
+    depends_on: [ identity-service-db ]
+    ports: [ "5004:8080" ]
+
+  catalog-service:
+    build: ./src/Catalog.API
+    environment:
+      DB_HOST: "catalog-service-db"
+      POSTGRES_DB: "catalogdb"
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "postgres"
+    depends_on: [ catalog-service-db ]
+    ports: [ "5001:8080" ]
+
+  order-service:
+    build: ./src/Ordering.API
+    environment:
+      DB_HOST: "order-service-db"
+      POSTGRES_DB: "orderingdb"
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "postgres"
+      Jwt__Key: "dev-only-secret-change-me-please-0123456789abcdef"
+      Jwt__Issuer: "shopping-identity"
+      Jwt__Audience: "shopping-clients"
+    depends_on: [ order-service-db ]
+    ports: [ "5003:8080" ]
+
+  basket-service:
+    build: ./src/Basket.API
+    environment:
+      ConnectionStrings__Redis: "basket-service-db:6379"
+      Services__Ordering: "http://order-service:8080"
+    depends_on: [ basket-service-db, order-service ]
+    ports: [ "5002:8080" ]
+
+  gateway-service:
+    build: ./src/Gateway
+    environment:
+      ASPNETCORE_ENVIRONMENT: "Docker"
+    depends_on: [ identity-service, catalog-service, basket-service, order-service ]
+    ports: [ "8080:8080" ]
+
+  web:
+    build: ./src/Web
+    depends_on: [ gateway-service ]
+    ports: [ "3000:80" ]
+
+volumes:
+  catalog-data:
+  ordering-data:
+  identity-data:

@@ -1,0 +1,71 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: order-service-db
+  namespace: shoppingapp-ns
+spec:
+  ports:
+    - port: 5432
+      targetPort: 5432
+  selector:
+    app: order-db
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: order-db-deployment
+  namespace: shoppingapp-ns
+  labels:
+    app: order-db
+spec:
+  strategy:
+    type: Recreate
+  replicas: 1
+  selector:
+    matchLabels:
+      app: order-db
+  template:
+    metadata:
+      labels: 
+        app: order-db
+    spec:
+      containers:
+      - name: order-db
+        image: postgres:latest
+        ports:
+        - containerPort: 5432
+        env:
+        - name: POSTGRES_DB
+          valueFrom:
+            configMapKeyRef:
+              name: shoppingapp-config-map
+              key: POSTGRES_DB
+        - name: POSTGRES_USER
+          valueFrom:
+            configMapKeyRef:
+              name: shoppingapp-config-map
+              key: POSTGRES_USER
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: shoppingapp-secret
+              key: POSTGRES_PASSWORD
+        readinessProbe:
+          exec:
+            command: ["pg_isready", "-U", "postgres"]
+          initialDelaySeconds: 10
+          periodSeconds: 5
+        livenessProbe:
+          exec:
+            command: ["pg_isready", "-U", "postgres"]
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        volumeMounts:
+          - name: order-db-storage
+            mountPath: /var/lib/postgresql
+      volumes:
+        - name: order-db-storage
+          persistentVolumeClaim:
+            claimName: order-db-pvc
+      
+

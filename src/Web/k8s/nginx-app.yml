@@ -32,5 +32,12 @@ spec:
         - name: nginx-app
           image: shopping-microservices-web:latest
           imagePullPolicy: IfNotPresent
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "250m"
+            limits:
+              memory: "128Mi"
+              cpu: "500m"
           ports:
           - containerPort: 80

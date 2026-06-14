@@ -16,10 +16,10 @@ resources:
   - Basket.API/k8s/basket-db-pvc.yml
 
   # Databases
-  - Catalog.API/k8s/catalog-db-kind.yml
-  - Identity.API/k8s/identity-db-kind.yml
-  - Ordering.API/k8s/order-db-kind.yml
-  - Basket.API/k8s/basket-kind.yml
+  - Catalog.API/k8s/catalog-db.yml
+  - Identity.API/k8s/identity-db.yml
+  - Ordering.API/k8s/order-db.yml
+  - Basket.API/k8s/basket-db.yml
 
   # Application services
   - Catalog.API/k8s/catalog-app.yml

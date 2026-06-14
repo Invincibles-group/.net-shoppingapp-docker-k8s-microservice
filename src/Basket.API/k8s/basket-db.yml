@@ -18,6 +18,8 @@ metadata:
   labels:
     app: basket-db
 spec:
+  strategy:
+    type: Recreate
   replicas: 1
   selector:
     matchLabels:

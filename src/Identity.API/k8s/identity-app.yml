@@ -4,7 +4,6 @@ metadata:
   name: identity-service
   namespace: shoppingapp-ns
 spec:
-  type: NodePort
   ports:
     - port: 8080
       targetPort: 8080
@@ -19,6 +18,8 @@ metadata:
   labels:
     app: identity-api
 spec:
+  strategy:
+    type: Recreate
   replicas: 1
   selector:
     matchLabels:

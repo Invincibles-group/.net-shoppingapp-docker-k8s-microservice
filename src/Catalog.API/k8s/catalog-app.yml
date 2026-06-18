@@ -29,7 +29,7 @@ spec:
     spec:
       containers:
       - name: catalog-api
-        image: shopping-microservices-catalog-api:latest
+        image: hemant89/shopping-microservices-catalog-service:v1.0
         imagePullPolicy: IfNotPresent
         resources:
           requests:

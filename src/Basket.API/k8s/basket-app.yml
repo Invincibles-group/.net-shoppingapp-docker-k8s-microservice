@@ -29,8 +29,7 @@ spec:
     spec:
       containers:
       - name: basket-api
-        image: shopping-microservices-basket-api:latest
-        imagePullPolicy: IfNotPresent
+        image: hemant89/shopping-microservices-basket-service:v1.0 
         resources:
           requests:
             memory: "64Mi"

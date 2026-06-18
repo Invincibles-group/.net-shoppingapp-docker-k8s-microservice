@@ -29,7 +29,7 @@ spec:
     spec:
       containers:
       - name: identity-api
-        image: shopping-microservices-identity-api:latest
+        image: hemant89/shopping-microservices-identity-service:v1.0
         imagePullPolicy: IfNotPresent
         resources:
           requests:

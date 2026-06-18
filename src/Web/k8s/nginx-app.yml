@@ -30,7 +30,7 @@ spec:
     spec:
       containers:
         - name: nginx-app
-          image: shopping-microservices-web:latest
+          image: hemant89/shopping-microservices-web:v1.0
           imagePullPolicy: IfNotPresent
           resources:
             requests:

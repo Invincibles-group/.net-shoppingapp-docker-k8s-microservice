@@ -29,7 +29,7 @@ spec:
     spec:
       containers:
       - name: order-api
-        image: shopping-microservices-ordering-api:latest
+        image: hemant89/shopping-microservices-order-service:v1.0
         imagePullPolicy: IfNotPresent
         resources:
           requests:
